@@ -18,8 +18,20 @@ def connect():
 def check(xtdata):
     print("xtdata import OK")
     for code in WATCHLIST[:1]:
-        result = xtdata.get_full_tick([code])
-        print(json.dumps({"code": code, "has_tick": bool(result and result.get(code))}, ensure_ascii=False))
+        try:
+            result = xtdata.get_full_tick([code])
+        except Exception as exc:
+            # A failed QMT authentication can return a non-JSON response,
+            # which some xtquant versions surface as JSONDecodeError.
+            print(json.dumps({"code": code, "status": "NO_DATA",
+                              "reason": "行情请求失败，请检查QMT行情接口认证与权限",
+                              "error_type": type(exc).__name__}, ensure_ascii=False))
+            return False
+        has_tick = bool(result and result.get(code))
+        print(json.dumps({"code": code, "has_tick": has_tick}, ensure_ascii=False))
+        if not has_tick:
+            return False
+    return True
 
 def download(xtdata):
     for code in WATCHLIST:
